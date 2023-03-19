@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+} from "react-native";
 import FlipCard from "react-native-flip-card";
+import { getCharacters } from "./marvelApi";
 
-const generateCards = (numPairs) => {
-  const cards = [];
-  for (let i = 0; i < numPairs * 2; i++) {
-    cards.push({
-      id: i,
-      pairId: Math.floor(i / 2),
-      isFlipped: false,
-    });
-  }
-  return shuffle(cards);
+const generateCards = (characters) => {
+  const cards = characters.map((character, index) => ({
+    id: index * 2,
+    pairId: index,
+    isFlipped: false,
+    character,
+  }));
+
+  return shuffle([...cards, ...cards]);
 };
 
 const shuffle = (array) => {
@@ -23,9 +30,19 @@ const shuffle = (array) => {
 };
 
 const App = () => {
-  const [cards, setCards] = useState(generateCards(8));
+  const [cards, setCards] = useState([]);
   const [firstCard, setFirstCard] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [matchedCount, setMatchedCount] = useState(0);
+  const [flippedCount, setFlippedCount] = useState(0);
+
+  useEffect(() => {
+    const loadCharacters = async () => {
+      const characters = await getCharacters(8);
+      setCards(generateCards(characters));
+    };
+    loadCharacters();
+  }, []);
 
   useEffect(() => {
     if (isChecking && firstCard) {
@@ -50,6 +67,7 @@ const App = () => {
         return card;
       });
       setCards(newCards);
+      setMatchedCount((prevMatchedCount) => prevMatchedCount + 1);
     } else {
       setTimeout(() => {
         const newCards = cards.map((card) => {
@@ -79,6 +97,10 @@ const App = () => {
 
     const card = newCards[cardIndex];
 
+    if (!card.isFlipped) {
+      setFlippedCount((prevFlippedCount) => prevFlippedCount + 1);
+    }
+
     if (!firstCard) {
       setFirstCard(card);
     } else {
@@ -87,22 +109,32 @@ const App = () => {
   };
 
   const renderCard = (card, index) => {
+    const { thumbnail } = card.character;
+    const imageUrl = `${thumbnail.path}.${thumbnail.extension}`;
+
     return (
       <TouchableOpacity
         key={index}
         onPress={() => handleCardPress(index)}
-        activeOpacity={card.isFlipped || card.isMatched ? 1 : 0.5}
+        activeOpacity={card.isFlipped || card.isMatched ? 1 : 0.6}
         style={styles.card}
       >
         <FlipCard
-          flip={card.isFlipped}
+          flip={card.isFlipped || card.isMatched}
           clickable={false}
-          flipHorizontal={true}
+          style={styles.flipCard}
+          friction={6}
+          perspective={1000}
+          flipHorizontal
           flipVertical={false}
         >
           <View style={[styles.cardContent, styles.cardBack]} />
           <View style={[styles.cardContent, styles.cardFront]}>
-            <Text style={styles.cardText}>{card.pairId + 1}</Text>
+            <Image
+              style={styles.cardImage}
+              source={{ uri: imageUrl }}
+              resizeMode="cover"
+            />
           </View>
         </FlipCard>
       </TouchableOpacity>
@@ -111,10 +143,15 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Jogo da Memória</Text>
-      <View style={styles.cardsContainer}>
-        {cards.map((card, index) => renderCard(card, index))}
-      </View>
+      <Text style={styles.title}>Jogo da Memória Marvel</Text>
+      <ScrollView contentContainerStyle={styles.appContent}>
+        <Text style={styles.stats}>
+          Acertos: {matchedCount} | Cartas viradas: {flippedCount}
+        </Text>
+        <View style={styles.cardsContainer}>
+          {cards.map((card, index) => renderCard(card, index))}
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -124,21 +161,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
+  },
+  appContent: {
+    flex: 1,
+    paddingTop: 20,
+    paddingHorizontal: 10,
+    alignSelf: "stretch",
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     marginBottom: 20,
   },
+  stats: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
   cardsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
     alignItems: "center",
+    alignSelf: "stretch",
   },
   card: {
-    margin: 5,
+    margin: 8,
+  },
+  flipCard: {
+    borderWidth: 0,
   },
   cardContent: {
     width: 80,
@@ -153,10 +205,10 @@ const styles = StyleSheet.create({
   cardFront: {
     backgroundColor: "#2c3e50",
   },
-  cardText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
+  cardImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 5,
   },
 });
 
