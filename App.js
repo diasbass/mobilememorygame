@@ -62,7 +62,7 @@ const App = () => {
     if (firstCard.pairId === secondCard.pairId) {
       const newCards = cards.map((card) => {
         if (card.id === firstCard.id || card.id === secondCard.id) {
-          return { ...card, isMatched: true };
+          return { ...card, isMatched: true, isFlipped: true };
         }
         return card;
       });
@@ -79,6 +79,10 @@ const App = () => {
         setCards(newCards);
       }, 1000);
     }
+    setTimeout(() => {
+      setIsChecking(false);
+      setFirstCard(null);
+    }, 1000); 
 
     setFirstCard(null);
     setIsChecking(false);
@@ -87,15 +91,18 @@ const App = () => {
   const handleCardPress = (cardIndex) => {
     if (isChecking) return;
 
-    const newCards = cards.map((card, index) => {
-      if (index === cardIndex) {
-        return { ...card, isFlipped: true };
-      }
-      return card;
-    });
-    setCards(newCards);
+    const card = cards[cardIndex];
 
-    const card = newCards[cardIndex];
+    if (card.isMatched) return;
+
+    const newCards = cards.map((c, index) => {
+      if (index === cardIndex) {
+        return { ...c, isFlipped: true };
+      }
+      return c;
+    });
+
+    setCards(newCards);
 
     if (!card.isFlipped) {
       setFlippedCount((prevFlippedCount) => prevFlippedCount + 1);
@@ -120,7 +127,7 @@ const App = () => {
         style={styles.card}
       >
         <FlipCard
-          flip={card.isFlipped || card.isMatched}
+          flip={card.isFlipped}
           clickable={false}
           style={styles.flipCard}
           friction={6}
@@ -135,6 +142,15 @@ const App = () => {
               source={{ uri: imageUrl }}
               resizeMode="cover"
             />
+            {card.isMatched && (
+              <View style={styles.matchedCard}>
+                <Text
+                  style={{ fontSize: 24, color: "white", fontWeight: "bold" }}
+                >
+                  ✓
+                </Text>
+              </View>
+            )}
           </View>
         </FlipCard>
       </TouchableOpacity>
@@ -209,6 +225,15 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 5,
+  },
+  matchedCard: {
+    position: "absolute",
+    backgroundColor: "rgba(46, 204, 113, 0.5)",
+    width: "100%",
+    height: "100%",
+    borderRadius: 5,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
